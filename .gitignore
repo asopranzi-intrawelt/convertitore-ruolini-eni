@@ -12,8 +12,11 @@ IntraPanel/frontend/node_modules/
 IntraPanel/frontend/build/
 IntraPanel/backend/node_modules/
 
-# Claude settings locali
-.claude/
+# Claude — solo i file locali/personali sono ignorati; la cartella .claude/ è tracciata
+.claude/settings.local.json
+CLAUDE.local.md
+_notes/
+.tmp-docx-*/
 
 # Logs
 *.log
