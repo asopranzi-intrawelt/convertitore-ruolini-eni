@@ -1,0 +1,23 @@
+/* CertificazioniMenu.module.css */
+.menu {
+    width: 200px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+}
+
+.customFileInput {
+    display: block;
+    margin-bottom: 10px;
+}
+
+.customFileInput label {
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+}
+
+.customFileInput input[type="file"] {
+    display: none;
+}

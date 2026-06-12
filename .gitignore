@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.venv311/
+*.egg-info/
+.env
+
+# Node / React
+IntraPanel/frontend/node_modules/
+IntraPanel/frontend/build/
+IntraPanel/backend/node_modules/
+
+# Claude settings locali
+.claude/
+
+# Logs
+*.log
+app.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Excel temporanei generati dall'app
+*.xlsx
+
+# Docker (non usato in produzione diretta)
+# docker-compose.yml lasciato per riferimento futuro

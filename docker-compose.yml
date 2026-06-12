@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  odoo_service:
+    build:
+      context: ./odoo_service
+    expose:
+      - "5000"
+    restart: unless-stopped
+    working_dir: /app
+
+  frontend:
+    build:
+      context: ./IntraPanel/frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - odoo_service
+    restart: unless-stopped
