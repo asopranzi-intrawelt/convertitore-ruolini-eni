@@ -5,7 +5,7 @@ generated-date: 2026-06-12
 covers-paths:
   - odoo_service/flask_service.py
   - odoo_service/odoo_handler/**
-last-verified-commit: 2da37cf
+last-verified-commit: 0a25c2e
 ---
 
 # Design e sicurezza
@@ -25,12 +25,11 @@ che non è condiviso tra più worker. Il server Flask è avviato in modalità si
 
 ## Controllo degli accessi
 
-La IP restriction è implementata come hook `@app.before_request` in `flask_service.py`. Il
-confronto avviene su `request.remote_addr`, che è l'IP diretto della connessione TCP.
-Questo funziona correttamente solo in assenza di proxy intermedi: se in futuro venisse
-aggiunto un reverse proxy, `request.remote_addr` restituirebbe l'IP del proxy e la
-restriction dovrebbe essere spostata al proxy oppure gestita leggendo `X-Forwarded-For` con
-una lista di proxy fidati esplicita (vedere ADR-002 in `memory/decisions.md`).
+La IP restriction è implementata in nginx (`/etc/nginx/sites-available/convertitore-ruolini`)
+con le direttive `allow`/`deny` a livello di server block. Flask ascolta solo su
+`127.0.0.1:5000` e non è raggiungibile direttamente dalla LAN: l'unico punto di ingresso
+dalla rete è nginx su porta 80. nginx passa al backend `X-Real-IP` e `X-Forwarded-For` per
+eventuali esigenze di logging.
 
 ## Gestione dei segreti
 
@@ -44,6 +43,6 @@ incorporato nella build JavaScript al momento della compilazione: non contiene s
 ## CORS
 
 Flask-Cors è configurato con `CORS(app)` senza restrizioni di origine (`*`). Poiché la React
-SPA è servita dalla stessa origine di Flask (stesso host e porta), le richieste del browser
+SPA è servita dalla stessa origine nginx (stesso host e porta 80), le richieste del browser
 sono same-origin e il CORS non interviene. La configurazione permissiva è quindi ininfluente
 nel deployment attuale ma andrebbe ristretta se il frontend venisse servito separatamente.

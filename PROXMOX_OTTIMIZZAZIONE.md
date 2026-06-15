@@ -1,39 +1,41 @@
 # Ottimizzazione VM su Proxmox — IntraPanel
 
 Questa VM ospita esclusivamente il servizio IntraPanel (Flask + React). Al momento
-consuma ~5 GB di RAM su 8 disponibili a causa di servizi inutili (GNOME, Apache2,
-MariaDB, CUPS, ecc.). Obiettivo: portarla a ~300-500 MB di RAM al boot.
+consuma ~5 GB di RAM su 8 disponibili a causa di servizi inutili. Obiettivo: ridurre
+il consumo di RAM e CPU liberando risorse sulla VM Proxmox.
 
 ---
 
 ## 1. Disabilitare i servizi inutili (dalla VM)
 
+### Stato al 2026-06-15 — ESEGUITO
+
+I seguenti servizi sono stati disabilitati con lo script `proxmox-opt.sh`:
+
+| Servizio | Motivo |
+|---|---|
+| `cups` + `cups-browsed` | Stampa — non usata su server |
+| `avahi-daemon` | mDNS/Zeroconf — non necessario |
+| `ModemManager` | Modem — assente su VM |
+| `bluetooth` | Bluetooth — assente su VM |
+| `gnome-remote-desktop` | Desktop remoto GNOME — non usato |
+| `kerneloops` | Reporter crash kernel — non utile |
+| `power-profiles-daemon` | Gestione energetica — non utile su VM |
+| `switcheroo-control` | Switch GPU — non utile su VM |
+| `mariadb` | DB locale — app usa solo Odoo XML-RPC esterno |
+| `apache2` | Web server — rimpiazzato da nginx |
+
+**Nota:** il desktop GNOME è stato mantenuto (`gdm` + `graphical.target`) per permettere
+l'accesso diretto al SO dalla console Proxmox o dalla macchina fisica.
+`avahi-daemon` risulta ancora attivo nella sessione corrente (riattivato da D-Bus) ma non
+si avvierà al prossimo reboot.
+
+### Comandi manuali se necessario
+
 ```bash
-sudo systemctl disable --now \
-  gdm \
-  apache2 \
-  mariadb \
-  cups \
-  cups-browsed \
-  avahi-daemon \
-  snapd \
-  fwupd \
-  kerneloops \
-  ModemManager \
-  colord \
-  power-profiles-daemon \
-  gnome-remote-desktop \
-  unattended-upgrades
+sudo systemctl disable --now <nome-servizio>
+sudo systemctl enable --now <nome-servizio>   # per riabilitare
 ```
-
-### Avviare in modalità testo al posto della grafica
-
-```bash
-sudo systemctl set-default multi-user.target
-```
-
-Dopo il prossimo riavvio la VM parte headless (nessun desktop), il che riduce
-drasticamente l'uso di RAM. L'accesso rimane possibile via console Proxmox (VNC/SPICE).
 
 ---
 
@@ -132,15 +134,15 @@ Se si vuole essere più generosi: `--memory 2048 --cores 2`.
 ## 5. Verifica dopo il riavvio
 
 ```bash
-# RAM in uso dopo il riavvio (atteso: < 500 MB)
+# RAM in uso dopo il riavvio
 free -h
 
-# Servizi attivi (devono essere molto meno)
+# Servizi attivi
 systemctl list-units --type=service --state=running --no-pager
 
-# Flask in esecuzione
-ss -tlnp | grep 5000
+# Flask e nginx in ascolto
+ss -tlnp | grep -E '80|5000'
 
-# Test accesso dalla VM stessa (403 atteso — non è in allow list)
-curl -s -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:5000/
+# Test nginx (403 da localhost — non è in allow list)
+curl -s -o /dev/null -w "HTTP %{http_code}\n" -H "Host: convertitore-ruolini" http://127.0.0.1:80/
 ```

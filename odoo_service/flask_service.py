@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_file, send_from_directory, abort
+from flask import Flask, jsonify, request, send_file, send_from_directory
 import os
 from flask_cors import CORS
 from odoo_handler.models import sale_order, account_invoice
@@ -15,14 +15,7 @@ CORS(app)
 # setting up logging
 logging.basicConfig(filename='app.log', level=logging.DEBUG)
 
-ALLOWED_IPS = {'192.168.10.73', '192.168.10.74', '192.168.10.75'}
 BUILD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../IntraPanel/frontend/build')
-
-
-@app.before_request
-def restrict_access():
-    if request.remote_addr not in ALLOWED_IPS:
-        abort(403)
 
 
 @app.route('/', defaults={'path': ''})
@@ -334,4 +327,4 @@ def download_file(filename):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='127.0.0.1', port=5000)
