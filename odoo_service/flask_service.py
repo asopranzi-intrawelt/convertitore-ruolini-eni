@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_file, send_from_directory
+from flask import Flask, jsonify, request, send_file
 import os
 from flask_cors import CORS
 from odoo_handler.models import sale_order, account_invoice
@@ -14,17 +14,6 @@ CORS(app)
 
 # setting up logging
 logging.basicConfig(filename='app.log', level=logging.DEBUG)
-
-BUILD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../IntraPanel/frontend/build')
-
-
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve_react(path):
-    if path and os.path.exists(os.path.join(BUILD_DIR, path)):
-        return send_from_directory(BUILD_DIR, path)
-    return send_from_directory(BUILD_DIR, 'index.html')
-
 
 @app.route('/get-login', methods=['GET'])
 def get_login():
