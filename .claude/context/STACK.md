@@ -6,7 +6,7 @@ covers-paths:
   - odoo_service/**
   - IntraPanel/frontend/src/**
   - IntraPanel/backend/**
-last-verified-commit: 2da37cf
+last-verified-commit: 0a25c2e
 ---
 
 # Stack applicativo
@@ -32,8 +32,8 @@ Runtime fissati: Python 3.11 (venv), Node 18 (per la sola build), npm 9.
 
 ## Alternative deliberatamente escluse
 
-Nginx come server statico: scartato perché Docker non è disponibile sulla VM e aggiunge una
-dipendenza di sistema; Flask serve la build statica direttamente.
+Nginx come server statico puro: scartato. Nginx è invece presente come reverse proxy su
+porta 80 davanti a Flask.
 
 Docker Compose: presente come file di riferimento (`docker-compose.yml`) ma non usato in
 produzione; i Dockerfile esistono ma non vengono eseguiti nel deployment attuale.
@@ -53,9 +53,12 @@ invia i dati a `POST /save`. Flask arricchisce ogni riga interrogando Odoo via
 in `odoo_handler/rpc/xml_rpc.py`. Il risultato viene scritto in un foglio di controllo Excel
 e salvato sul filesystem. L'utente scarica il file tramite `GET /download/<filename>`.
 
-`flask_service.py` è il punto di ingresso unico: definisce tutte le route API, la IP
-restriction via `@app.before_request`, la catch-all che serve la React SPA, e avvia il
-server su `0.0.0.0:5000`.
+`flask_service.py` è il punto di ingresso unico: definisce tutte le route API, la catch-all
+che serve la React SPA, e avvia il server su `127.0.0.1:5000`. La IP restriction è gestita
+da nginx (non più in Flask).
+
+nginx (`/etc/nginx/sites-available/convertitore-ruolini`) ascolta su porta 80, applica la IP
+restriction ai tre client autorizzati e fa da reverse proxy verso Flask su 127.0.0.1:5000.
 
 `ReportProvider.js` e `CertificazioniProvider.js` sono i due context React che centralizzano
 le chiamate HTTP; la variabile `domain` in ciascuno legge `REACT_APP_REPORT_API` e
@@ -63,7 +66,8 @@ le chiamate HTTP; la variabile `domain` in ciascuno legge `REACT_APP_REPORT_API`
 
 ## Riferimenti a snippet
 
-`odoo_service/flask_service.py:22-33` — IP restriction e catch-all SPA.
+`odoo_service/flask_service.py:18-22` — catch-all SPA.
+`nginx.conf` (in repo) e `/etc/nginx/sites-available/convertitore-ruolini` — IP restriction e proxy.
 `odoo_service/odoo_handler/rpc/xml_rpc.py` — autenticazione e chiamata XML-RPC a Odoo.
 `odoo_service/odoo_handler/models/sale_order.py` — query ordini di vendita con join su righe.
 `IntraPanel/frontend/src/Context/ReportProvider.js:6` — `domain` da variabile d'ambiente.

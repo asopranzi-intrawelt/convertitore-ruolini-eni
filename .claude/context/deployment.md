@@ -9,7 +9,7 @@ covers-paths:
   - IntraPanel/frontend/build/**
   - LAN_SETUP.md
   - PROXMOX_OTTIMIZZAZIONE.md
-last-verified-commit: 2da37cf
+last-verified-commit: 0a25c2e
 ---
 
 # Deployment
@@ -19,24 +19,31 @@ last-verified-commit: 2da37cf
 L'applicazione è in produzione su una singola VM Proxmox raggiungibile all'indirizzo
 `192.168.20.22`. Non esistono ambienti di staging o di test separati. L'accesso è consentito
 ai soli IP statici `192.168.10.73`, `192.168.10.74`, `192.168.10.75`; ogni altro indirizzo
-riceve HTTP 403.
+riceve HTTP 403 da nginx.
 
-L'URL di accesso dal browser è `http://192.168.20.22:5000`.
+L'URL di accesso dal browser è `http://convertitore-ruolini` (porta 80, nginx).
+I client devono avere la voce `192.168.20.22 convertitore-ruolini` nel file hosts locale.
 
-Il repository remoto è `https://github.com/asopranzi-intrawelt/convertitore-ruolini-eni`.
+Il repository remoto è `git@github.com:asopranzi-intrawelt/convertitore-ruolini-eni.git`
+(SSH, autenticato con chiave ed25519 "VM ruolini" sull'account asopranzi-intrawelt).
 
 ## Comandi
 
-Avvio del servizio dalla radice del progetto:
+Flask è gestito come systemd user service. Comandi principali:
 
 ```bash
-bash start.sh
+systemctl --user status intrapanel    # stato
+systemctl --user restart intrapanel   # riavvio dopo modifiche al backend
+systemctl --user stop intrapanel      # stop
+journalctl --user -u intrapanel -f    # log in tempo reale
 ```
 
-Avvio in background con log persistente:
+nginx è gestito come systemd system service:
 
 ```bash
-nohup bash start.sh > /tmp/intrapanel.log 2>&1 &
+sudo systemctl status nginx
+sudo systemctl restart nginx          # dopo modifiche a /etc/nginx/sites-available/
+sudo nginx -t                         # verifica sintassi config prima del restart
 ```
 
 Build della React SPA (necessaria dopo ogni modifica al frontend o al file `.env`):
@@ -45,12 +52,12 @@ Build della React SPA (necessaria dopo ogni modifica al frontend o al file `.env
 cd IntraPanel/frontend
 npm run build
 ```
+Flask non va riavviato dopo la build: serve i nuovi file dalla stessa cartella `build/`.
 
-Verifica che il servizio sia attivo:
+Verifica che i servizi siano attivi:
 
 ```bash
-ss -tlnp | grep 5000
-tail -f /tmp/intrapanel.log
+ss -tlnp | grep -E '80|5000'
 ```
 
 ## Virtual environment
@@ -82,8 +89,6 @@ ODOO_PASSWORD=<password Odoo>
 nella build React.
 
 ```
-REACT_APP_REPORT_API=http://<IP server>:5000
-REACT_APP_CERT_API=http://<IP server>:5000
+REACT_APP_REPORT_API=http://convertitore-ruolini
+REACT_APP_CERT_API=http://convertitore-ruolini
 ```
-
-Il valore di `<IP server>` è `192.168.20.22` nel deployment attuale.
