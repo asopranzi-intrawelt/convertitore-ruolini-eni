@@ -3,7 +3,9 @@ import axios from 'axios';
 
 const ReportContext = createContext(null);
 
-const domain = process.env.REACT_APP_REPORT_API || "http://localhost:5000";
+// URL relativo: le chiamate vanno alla stessa origine da cui e' servita la pagina,
+// cosi una sola build funziona sia in locale (localhost) sia in LAN via nginx.
+const domain = process.env.REACT_APP_REPORT_API || "";
 
 const ReportProvider = ({ children }) => {
     const upload = async (data) => {
