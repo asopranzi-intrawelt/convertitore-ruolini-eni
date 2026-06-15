@@ -17,8 +17,6 @@ class XmlRpc:
     def __init__(self, url=None, db=None):
         self.url = url or os.getenv('ODOO_URL', 'https://trex.intrawelt.com')
         self.db = db or os.getenv('ODOO_DB', 'intrawelt')
-        self.url = url
-        self.db = db
         self.inizializza_odoo_rpc()
 
     def inizializza_odoo_rpc(self):
