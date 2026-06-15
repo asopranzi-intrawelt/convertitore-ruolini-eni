@@ -13,18 +13,26 @@ class XmlRpc:
     password = os.getenv('ODOO_PASSWORD', '')
     uid = ""
     info = ""
+    # sessione Odoo condivisa fra istanze: chiave (url, db, utente) -> (uid, info)
+    _session_cache = {}
 
     def __init__(self, url=None, db=None):
         self.url = url or os.getenv('ODOO_URL', 'https://trex.intrawelt.com')
         self.db = db or os.getenv('ODOO_DB', 'intrawelt')
-        self.url = url
-        self.db = db
         self.inizializza_odoo_rpc()
 
     def inizializza_odoo_rpc(self):
+        # Autentica una sola volta per (url, db, utente) e riusa la sessione: evita
+        # le centinaia di authenticate() ridondanti della conversione riga per riga.
+        key = (self.url, self.db, self.username)
+        cached = XmlRpc._session_cache.get(key)
+        if cached is not None:
+            self.uid, self.info = cached
+            return
         info = xmlrpc.client.ServerProxy('{}/xmlrpc/2/common'.format(self.url))
         self.uid = info.authenticate(self.db, self.username, self.password, {})
         self.info = info
+        XmlRpc._session_cache[key] = (self.uid, self.info)
 
     def get_endpoint(self):
         return xmlrpc.client.ServerProxy('{}/xmlrpc/2/object'.format(self.url))
