@@ -238,9 +238,17 @@ def get_eni_data_report(data):
                 try:
                     orders = sale_order.SaleOrder().get_list(param_search)
                 except Exception as e:
-                    app.logger.info('get_eni_data_report')
-                    app.logger.info(e)
-                    app.logger.info('@@@@@@@@@@@@@@@@@@@')
+                    # Una query Odoo che solleva (connessione, autenticazione, endpoint
+                    # errato) e' un errore sistemico: si interrompe l'intera conversione con
+                    # un messaggio chiaro, invece di lasciare 'orders' non assegnato e
+                    # generare un UnboundLocalError fuorviante o un file silenziosamente
+                    # incompleto. Un ordine semplicemente non trovato non solleva: in quel
+                    # caso get_list restituisce [] e il ramo successivo lo gestisce.
+                    app.logger.error(
+                        "get_eni_data_report: errore Odoo sul protocollo %r: %s", row[0], e)
+                    raise RuntimeError(
+                        "Conversione interrotta: errore nella connessione o nella query "
+                        "Odoo per il protocollo {}: {}".format(row[0], e)) from e
 
                 if len(orders) > 0:
                     transito = orders[0]['flex_note']
