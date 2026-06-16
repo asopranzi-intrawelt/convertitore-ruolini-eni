@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-06-16 — Riscrittura della logica di conversione ruolino (su develop)
+
+Commit di riferimento: branch `develop`, in attesa di deploy. Vedi ADR-005 per il dettaglio
+operativo.
+File toccato: `odoo_service/flask_service.py`.
+Motivo: allineare la conversione all'output reale richiesto, dedotto da un benchmark di cinque
+coppie sorgente/`_IW` (gennaio-maggio 2026) in `/home/intrawelt/Scaricati`. La vecchia logica
+produceva un foglio `Control` rimappato da cui l'operatore costruiva il `_IW` a mano; la nuova
+scrive in posizione nel foglio `Fattura` del sorgente i valori Odoo nelle colonne 16, 19, 20, 22
+e 30 (pagine, asseverazione, legalizzazione piu apostille, bollo, "quantita marche"), aggiunge un
+foglio `Controllo IW` con il registro prima/dopo per la revisione, e salva e serve il file come
+`<sorgente>_IW.xlsx`. Indici di colonna resi costanti leggibili; rimossi `get_eni_data_report`,
+`controls`, `add_style` e l'intera macchina del foglio `Control`; la robustezza Odoo del task #5
+e' confluita nell'helper `valori_odoo` (errore di connessione chiaro, ordine non trovato gestito).
+Validazione: end-to-end via applicazione su tutti e cinque i mesi, le cinque colonne coincidono
+col benchmark salvo dieci note di urgenza, lasciate al controllo manuale per decisione esplicita,
+e due asseverazioni in drift del dato Odoo. La nota di urgenza e quella cliente non hanno un
+segnale nei dati e restano annotazioni manuali del revisore.
+Pendente: commit su `develop`, poi deploy in produzione (merge `develop`->`main` ed esecuzione di
+`setup-nginx.sh`). Nota a margine: ADR-001 e ADR-002 risultano superati dal refactoring nginx gia
+in produzione, da formalizzare come ADR a parte.
+
+---
+
 ## 2026-06-16 — Refactoring in produzione (cutover) e separazione ambienti
 
 Commit di riferimento: 0516741 (merge di `refactoring` in `main`).
