@@ -1,70 +1,54 @@
 ---
-generated-from-commit: 0a25c2e
+generated-from-commit: 0516741
 generated-from-branch: main
-generated-date: 2026-06-15
+generated-date: 2026-06-16
 covers-paths:
   - odoo_service/flask_service.py
+  - odoo_service/odoo_handler/rpc/xml_rpc.py
   - IntraPanel/frontend/**
+  - nginx.conf
+  - setup-nginx.sh
   - .claude/**
-last-verified-commit: 0a25c2e
+last-verified-commit: 0516741
 ---
 
 # Feature attiva
 
-Stato: refactoring architettura in avvio su branch separato. Proxmox optimization completata e
-verificata post-reboot il 2026-06-15.
+Stato: refactoring per la LAN completato e in produzione (cutover al commit `0516741`, verificato
+da un client LAN reale). L'attività aperta in coda è uniformare l'utente Odoo (task #4).
 
-## Hostname LAN — completato (2/3 client)
+## Refactoring architettura (Fase 2 roadmap) — completato e deployato
 
-`http://convertitore-ruolini` funziona su 192.168.10.73 e 192.168.10.74.
-192.168.10.75: manca la voce `192.168.20.22 convertitore-ruolini` nel file hosts di quella
-macchina. Il server è configurato correttamente.
+L'architettura è stata separata: nginx serve la build statica da `/var/www/convertitore-ruolini`
+ai tre IP autorizzati e inoltra le sole rotte API a Flask `127.0.0.1:5000`, che ora è solo-API.
+Aggiunti il timeout `proxy_read_timeout 600s` su `/save`, l'URL API relativo same-origin nel
+frontend, e una cache della sessione XML-RPC che dimezza i tempi di conversione senza cambiare i
+risultati. Risolto contestualmente il bug Odoo del 12/06 in `xml_rpc.py`. Verifica end-to-end da
+client `.73`: output identico al noto-buono. Dettaglio architettura e deploy in `deployment.md`.
 
-## Strategia di sviluppo senza ambiente di test
+Restano fuori dal lavoro fatto, come possibili passi successivi: rimuovere `IntraPanel/backend/`
+(Node.js non operativo) e pulire il componente Certificazioni (inutilizzato).
 
-Non esiste un ambiente di staging. Il deployment di produzione è l'unico:
-- nginx su porta 80 → Flask su 127.0.0.1:5000
-- systemd user service `intrapanel` con linger attivo
+## Separazione test e produzione — adottata
 
-Per sviluppare senza interrompere il servizio:
-1. Lavorare su un branch git separato (`git checkout -b refactoring`)
-2. Testare modifiche Flask lanciando un'istanza temporanea su porta 5001 dal branch e
-   verificando con `curl http://127.0.0.1:5001/`
-3. Deploy: `systemctl --user stop intrapanel` → merge branch → `systemctl --user start intrapanel`
-   (downtime di pochi secondi, preferibilmente fuori orario lavorativo)
-4. Tag dello stato funzionante prima di ogni fase rischiosa: `git tag v1-working`
+Produzione su `main` nella cartella principale, con deploy in LAN via `setup-nginx.sh`. Sviluppo
+nel worktree `develop` sotto `convertitore-ruolini-eni-dev`, con test locale su porte dedicate.
+Baseline vergine `eni-report+intrapanelUI` (backend 5050, frontend 3000) come riferimento e
+ripiego. Procedura completa in `deployment.md` e `dev-testing.md`.
 
-## Proxmox optimization (Fase 3 roadmap) — completata
+## Prossima attività
 
-Riduzione risorse applicata dalla console Proxmox (RAM 2 GB, CPU 2 vCPU) e verificata con un
-reboot il 2026-06-15: nginx e il service `intrapanel` tornano up al boot, l'app risponde,
-`free -h` mostra ~635 Mi disponibili con ~693 Mi di swap in uso. Servizi disabilitati e non più
-attivi: `apache2`, `cups`, `cups-browsed`, `bluetooth`, `avahi-daemon`, `ModemManager`,
-`gnome-remote-desktop`, `kerneloops`, `power-profiles-daemon`, `switcheroo-control`, `mariadb`.
-Il boot target è stato lasciato `graphical.target` per scelta esplicita, perché la VM è anche
-workstation; `gdm` è `static` e resta caricato di conseguenza, `gnome-shell` è il principale
-consumatore residuo di RAM (~202 MB). Dettaglio in `PROXMOX_OTTIMIZZAZIONE.md`.
+### 1. Uniformare utente Odoo ad asopranzi@intrawelt.com (task #4) — prossima
 
-## Prossime feature (in ordine)
-
-### 1. Refactoring architettura (Fase 2 roadmap) — attiva
-
-Su branch `refactoring`, separare le responsabilità:
-- nginx serve direttamente la build React (elimina la catch-all da Flask)
-- Flask: solo API su 127.0.0.1:5000
-- Rimuovere `IntraPanel/backend/` (Node.js non operativo)
-- Uniformare gestione variabili d'ambiente
-- Pulizia componente Certificazioni (inutilizzato)
-
-## Definition of done per Proxmox — raggiunta (con una deroga)
-
-- Servizi inutili disabilitati e verificati non più attivi al reboot: fatto
-- RAM e CPU ridotte dalla console Proxmox (2 GB / 2 vCPU): fatto
-- App ancora raggiungibile dopo il reboot: verificato
-- Boot target a `multi-user`: deroga consapevole, lasciato `graphical.target` perché la VM è
-  anche workstation. Resta come possibile ottimizzazione futura se la pressione sullo swap
-  diventasse un problema (recupererebbe ~250 MB)
+`gmandolesi@intrawelt.com` non è più dipendente. `main` e `develop` leggono l'utente dal `.env`,
+dove c'è già `asopranzi@intrawelt.com`, quindi vanno solo verificati. La copia vergine
+`eni-report` ha invece `gmandolesi` e la password cablati nel sorgente
+(`odoo_handler/rpc/xml_rpc.py`): vanno sostituiti con `asopranzi`, idealmente spostando le
+credenziali in un `.env` come negli altri ambienti.
 
 ## Domande aperte
 
-- OS del client 192.168.10.75 (per istruzioni file hosts)
+- OS del client 192.168.10.75, per le istruzioni del file hosts (manca ancora la voce
+  `192.168.20.22 convertitore-ruolini`).
+- Sincronizzare `STACK.md` e `design-and-security.md` alla nuova architettura (Flask solo-API,
+  nginx serve la build, build in `/var/www`, cache XML-RPC).
