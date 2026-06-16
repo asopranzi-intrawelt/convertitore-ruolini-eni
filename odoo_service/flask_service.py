@@ -4,8 +4,6 @@ from flask_cors import CORS
 from odoo_handler.models import sale_order, account_invoice
 import openpyxl
 from io import BytesIO
-import copy
-from openpyxl.styles import Font
 import logging
 
 # creating the Flask application
@@ -77,250 +75,119 @@ def upload_file():
     return jsonify(data)
 
 
+# ---- Conversione ruolino: la logica scrive in posizione sul foglio 'Fattura' i
+# valori letti da Odoo, lasciando intatte formule e struttura del sorgente. Le
+# colonne sono 1-based e riferite al layout del ruolino Eni. ----
+COL_PAGINE = 16          # N° PAGINE
+COL_ASSEVERAZIONE = 19   # ASSEVERAZIONE PRIMA COPIA
+COL_LEGALIZZAZIONE = 20  # LEGALIZZAZIONE (BOLLI): legalizzazione + apostille
+COL_BOLLO = 22           # importo imposta di bollo
+COL_NOTE_FORNITORE = 30  # nota "{qty} marche"
+
+# Nomi delle righe d'ordine Odoo, in italiano e inglese
+LINEE_TRADUZIONE = ('Traduzione', 'Translation')
+LINEE_ASSEVERAZIONE = ('Asseverazione', 'Certification')
+LINEE_LEGALIZZAZIONE = ('Legalizzazione', 'Legalization')
+LINEE_APOSTILLE = ('Apostille - visto Aja', 'Apostille')
+LINEE_BOLLO = ('Imposta di bollo 16 euro\n ', '16 Euro Stamp Duty')
+
+
+def _valore_riga(order_lines, nomi, campo, default=0):
+    """Primo valore di `campo` fra le righe d'ordine il cui nome e' in `nomi`."""
+    return next((riga[campo] for riga in order_lines if riga.get('name') in nomi), default)
+
+
+def valori_odoo(protocollo):
+    """Valori Odoo per un protocollo, o None se l'ordine non esiste.
+
+    Un errore di connessione o autenticazione viene rilanciato come errore chiaro
+    invece di essere inghiottito; un ordine semplicemente non trovato fa restituire
+    None, e in quel caso la riga resta invariata.
+    """
+    try:
+        orders = sale_order.SaleOrder().get_list([[['service_request_customer_id', '=', protocollo]]])
+    except Exception as e:
+        app.logger.error("Errore Odoo sul protocollo %r: %s", protocollo, e)
+        raise RuntimeError(
+            "Conversione interrotta: errore nella connessione o nella query Odoo "
+            "per il protocollo {}: {}".format(protocollo, e)) from e
+    if not orders:
+        return None
+    lines = orders[0].get('order_line', []) or []
+    bollo_qty = _valore_riga(lines, LINEE_BOLLO, 'product_uom_qty', 0)
+    return {
+        COL_PAGINE: _valore_riga(lines, LINEE_TRADUZIONE, 'product_uom_qty', 0),
+        COL_ASSEVERAZIONE: _valore_riga(lines, LINEE_ASSEVERAZIONE, 'price_subtotal', 0),
+        COL_LEGALIZZAZIONE: (_valore_riga(lines, LINEE_LEGALIZZAZIONE, 'price_subtotal', 0)
+                             + _valore_riga(lines, LINEE_APOSTILLE, 'price_subtotal', 0)),
+        COL_BOLLO: _valore_riga(lines, LINEE_BOLLO, 'price_subtotal', 0),
+        COL_NOTE_FORNITORE: "{} marche".format(bollo_qty),
+    }
+
+
 @app.route('/save', methods=['POST'])
 def save_file():
     data = request.get_json()
     filename = data['filename']
-    new_data = data['data']
-    reportdata, reportdata_origin = get_eni_data_report(data['data'])
-
-    # Get the relevant file
     workbook = files[filename]
-    sheet_control = workbook.create_sheet(title="Control")
-    worksheet_origin = workbook.active
-    worksheet = workbook['Control']
-    # cerco l'indice dove inizizare la compilazione dei campi
-    initindex = None
-    for index, row in enumerate(new_data):
-        if len(row) > 0:
-            if row[0] == 'PROTOCOLLO E PROGRESSIVO':
-                initindex = index + 1
-                break
+    sheet = workbook.active  # foglio 'Fattura' del ruolino
 
-    # aggiungo al file excel le celle prima dell'indice trovato
-    for x, row in enumerate(reportdata[:initindex], start=1):
-        for j, cell in enumerate(row, start=1):
+    # individua la riga di intestazione
+    header_row = None
+    for r in range(1, sheet.max_row + 1):
+        if sheet.cell(row=r, column=1).value == 'PROTOCOLLO E PROGRESSIVO':
+            header_row = r
+            break
+    if header_row is None:
+        return "Intestazione 'PROTOCOLLO E PROGRESSIVO' non trovata nel foglio", 400
 
-            current_cell = worksheet_origin.cell(row=x, column=30)
+    colonne = (COL_PAGINE, COL_ASSEVERAZIONE, COL_LEGALIZZAZIONE, COL_BOLLO, COL_NOTE_FORNITORE)
+    intestazioni = {c: sheet.cell(row=header_row, column=c).value for c in colonne}
+    modifiche = []  # registro prima/dopo per il controllo manuale
 
-            if x == initindex:
-                if j == 9:
-                    new_cell = worksheet.cell(row=x, column=j)
-                    new_cell._style = copy.deepcopy(current_cell._style)
-                    new_cell.value = "Check Transito"
-                elif j == 15:
-                    new_cell = worksheet.cell(row=x, column=j)
-                    new_cell._style = copy.deepcopy(current_cell._style)
-                    new_cell.value = "Check Unit Price"
-                elif j == 25:
-                    current_cell = worksheet_origin.cell(row=x, column=22)
-                    new_cell = worksheet.cell(row=x, column=j)
-                    new_cell._style = copy.deepcopy(current_cell._style)
-                    new_cell.value = cell
-                elif j == 24:
-                    current_cell = worksheet_origin.cell(row=x, column=22)
-                    new_cell = worksheet.cell(row=x, column=j)
-                    new_cell._style = copy.deepcopy(current_cell._style)
-                    new_cell.value = "Check Urgenza"
-                elif j == 33:
-                    new_cell = worksheet.cell(row=x, column=j)
-                    new_cell._style = copy.deepcopy(current_cell._style)
-                    new_cell.value = "Check Totale"
-                else:
-                    actual_cell = worksheet.cell(row=x, column=j)
-                    actual_cell._style = copy.deepcopy(current_cell._style)
-                    actual_cell.value = cell
-            else:
-                actual_cell = worksheet.cell(row=x, column=j)
-                actual_cell._style = copy.deepcopy(current_cell._style)
-                actual_cell.value = cell
+    for r in range(header_row + 1, sheet.max_row + 1):
+        protocollo = sheet.cell(row=r, column=1).value
+        if protocollo == 'TOTALE':
+            break
+        if protocollo in (None, ''):
+            continue
+        valori = valori_odoo(protocollo)
+        if valori is None:
+            modifiche.append((protocollo, '', 'ORDINE NON TROVATO SU ODOO', '', ''))
+            continue
+        for col in colonne:
+            cella = sheet.cell(row=r, column=col)
+            prima, dopo = cella.value, valori[col]
+            if prima != dopo:
+                cella.value = dopo
+                modifiche.append((protocollo, col, intestazioni.get(col), prima, dopo))
 
-        # Copy style from column 4 to column 3
-        for i, cell in enumerate(worksheet['X'], start=1):
-            new_cell = worksheet.cell(row=i, column=23)
-            if cell.has_style:
-                new_cell._style = copy.deepcopy(cell._style)
+    # foglio di tracciamento a parte, per il controllo manuale dell'output
+    if 'Controllo IW' in workbook.sheetnames:
+        del workbook['Controllo IW']
+    controllo = workbook.create_sheet(title='Controllo IW')
+    controllo.append(['PROTOCOLLO', 'COLONNA', 'VOCE', 'VALORE PRIMA', 'VALORE DOPO'])
+    for riga in modifiche:
+        controllo.append(list(riga))
 
-    for i, row in enumerate(reportdata[initindex:], start=initindex+1):
-        note = ""
-        for j, cell in enumerate(row, start=1):
-            if j == 9:
-                if not controls(worksheet_origin, i, cell, 'transito'):
-                    add_style(worksheet, i, j)
-            if j == 14:
-                if not controls(worksheet_origin, i, cell, 'tariffa'):
-                    add_style(worksheet, i, j)
-            if j == 24:
-                try:
-                    val = ' / tariffa maggiorata per urgenza'
-                    origin_cell = worksheet_origin.cell(row=i, column=21)
-                    print(reportdata_origin[i-1][27])
-                    if origin_cell.value:
-                        reportdata_origin[i-1][27] = reportdata_origin[i-1][27] + val
-                    if not controls(worksheet_origin, i, cell, 'urgenza'):
-                        add_style(worksheet, i, j)
-                        val += " ******"
-                        reportdata_origin[i-1][27] = reportdata_origin[i-1][27] + val
-                    note = reportdata_origin[i-1][27]
-                    print(note)
-                except Exception as e:
-                    print(e)
-            if j == 31:
-                worksheet.cell(row=i, column=j, value=note)
-            else:
-                worksheet.cell(row=i, column=j, value=cell)
+    # salva con il nome '<sorgente>_IW.xlsx'
+    base, ext = os.path.splitext(filename)
+    iwname = base + '_IW' + ext
+    workbook.save(iwname)
 
-    for i, row in enumerate(reportdata_origin[initindex:], start=initindex+1):
-        for j, cell in enumerate(row, start=1):
-            worksheet_origin.cell(row=i, column=j, value=cell)
-
-    # Save the updated workbook
-    workbook.save(filename)
-    data = []
-    for row in worksheet.iter_rows(min_row=0, values_only=True):
-        print(row)
-        data.append([cell for cell in row])
-    return jsonify(data)
-
-
-def controls(sheet, row, value, type):
-    var_ret = False
-    if type == 'transito':
-        current_cell = sheet.cell(row=row, column=8)
-        if (not current_cell.value and not value) or (current_cell.value and value):
-            var_ret = True
-
-    if type == 'urgenza':
-        current_cell = sheet.cell(row=row, column=21)
-        if (not current_cell.value and not value) or (current_cell.value and value):
-            var_ret = True
-
-    if type == 'tariffa':
-        current_cell = sheet.cell(row=row, column=13)
-        if current_cell.value == value:
-            var_ret = True
-
-    if type == 'totale':
-        current_cell = sheet.cell(row=row, column=29)
-        if current_cell.value == value:
-            var_ret = True
-
-    return var_ret
-
-
-def add_style(sheet, row, col):
-    current_cell = sheet.cell(row=row, column=col)
-    current_cell.font = Font(color="FF0000")
-
-
-def get_eni_data_report(data):
-
-    initindex = None
-    for index, row in enumerate(data):
-        if len(row) > 0:
-            if row[0] == 'PROTOCOLLO E PROGRESSIVO':
-                initindex = index+1
-                break
-    newdata = data.copy()
-    newdata_origin = copy.deepcopy(data)
-    # add colonne intestazione
-    newdata[initindex-1].insert(8, "Check Transito")
-    newdata[initindex-1].insert(14, "Check Unit Price")
-    newdata[initindex-1].insert(23, "Check Urgenza")
-    newdata[initindex-1].insert(32, "Check Totale")
-
-    if initindex is not None:
-        for index, row in enumerate(data[initindex:], start=initindex):
-            if len(row) > 0:
-                if row[0] == 'TOTALE':
-                    break
-                param_search = [[['service_request_customer_id', '=', row[0]]]]
-                try:
-                    orders = sale_order.SaleOrder().get_list(param_search)
-                except Exception as e:
-                    # Una query Odoo che solleva (connessione, autenticazione, endpoint
-                    # errato) e' un errore sistemico: si interrompe l'intera conversione con
-                    # un messaggio chiaro, invece di lasciare 'orders' non assegnato e
-                    # generare un UnboundLocalError fuorviante o un file silenziosamente
-                    # incompleto. Un ordine semplicemente non trovato non solleva: in quel
-                    # caso get_list restituisce [] e il ramo successivo lo gestisce.
-                    app.logger.error(
-                        "get_eni_data_report: errore Odoo sul protocollo %r: %s", row[0], e)
-                    raise RuntimeError(
-                        "Conversione interrotta: errore nella connessione o nella query "
-                        "Odoo per il protocollo {}: {}".format(row[0], e)) from e
-
-                if len(orders) > 0:
-                    transito = orders[0]['flex_note']
-                    urgenza = orders[0]['invoice_note']
-                    price_unit = next(item['price_unit'] for item in orders[0]['order_line'] if item['name'] in ('Traduzione', 'Translation'))
-                    product_uom_qty = next(item['product_uom_qty'] for item in orders[0]['order_line'] if item['name'] in ('Traduzione', 'Translation'))
-                    price_subtotal = next(item['price_subtotal'] for item in orders[0]['order_line'] if item['name'] in ('Traduzione', 'Translation'))
-
-                    try:
-                        ass_price_subtotal = next(item['price_subtotal'] for item in orders[0]['order_line'] if item['name'] in ('Asseverazione', 'Certification'))
-                    except StopIteration:
-                        ass_price_subtotal = 0
-
-                    try:
-                        lega_price_subtotal = next(item['price_subtotal'] for item in orders[0]['order_line'] if item['name'] in ('Legalizzazione', 'Legalization'))
-                    except StopIteration:
-                        lega_price_subtotal = 0
-
-                    try:
-                        apo_price_subtotal = next(item['price_subtotal'] for item in orders[0]['order_line'] if
-                         item['name'] in ('Apostille - visto Aja', 'Apostille'))
-                    except StopIteration:
-                        apo_price_subtotal = 0
-
-                    try:
-                        bollo_price_subtotal = next(item['price_subtotal'] for item in orders[0]['order_line'] if
-                         item['name'] in ('Imposta di bollo 16 euro\n ', '16 Euro Stamp Duty'))
-                    except StopIteration:
-                        bollo_price_subtotal = 0
-
-                    try:
-                        bollo_qty = next(item['product_uom_qty'] for item in orders[0]['order_line'] if
-                                                    item['name'] in (
-                                                    'Imposta di bollo 16 euro\n ', '16 Euro Stamp Duty'))
-                    except StopIteration:
-                        bollo_qty = 0
-
-                    totale_impo_riga = price_subtotal + ass_price_subtotal + bollo_price_subtotal + lega_price_subtotal + apo_price_subtotal
-                    note = str(bollo_qty)+" marche"
-
-                    #if urgenza:
-                    #    note += " / tariffa maggiorata per urgenza"
-                    newdata[index].insert(8, transito)
-                    newdata[index].insert(14, price_unit)
-                    newdata[index][15] = product_uom_qty
-                    newdata[index][16] = price_subtotal
-                    newdata[index][18] = ass_price_subtotal
-                    newdata[index][20] = lega_price_subtotal+apo_price_subtotal
-                    newdata[index][21] = bollo_price_subtotal
-                    newdata[index].insert(23, urgenza)
-                    newdata[index][30] = note
-                    newdata[index][31] = totale_impo_riga
-                    newdata[index].insert(32, "=AF" + str(index+1) + "<>'INTRAWELT sas'!" + "AC" + str(index+1))
-
-                    ## Importo solo i dati originali senza aggiungere colonne ##
-
-                    newdata_origin[index][13] = product_uom_qty
-                    newdata_origin[index][16] = ass_price_subtotal
-                    newdata_origin[index][18] = lega_price_subtotal + apo_price_subtotal
-                    newdata_origin[index][19] = bollo_price_subtotal
-                    newdata_origin[index][27] = note
-
-    return newdata, newdata_origin
+    # restituisce le righe del foglio Fattura per la tabella del frontend
+    righe = [[c for c in row] for row in sheet.iter_rows(values_only=True)]
+    return jsonify(righe)
 
 
 @app.route('/download/<filename>', methods=['GET'])
 def download_file(filename):
-    # Ensure file exists.
-    if not os.path.isfile(filename):
+    # Serve sempre la versione convertita '<sorgente>_IW.xlsx', con quel nome.
+    base, ext = os.path.splitext(filename)
+    iwname = filename if base.endswith('_IW') else base + '_IW' + ext
+    if not os.path.isfile(iwname):
         return "File not found", 404
-
-    return send_file(filename)
+    return send_file(iwname, as_attachment=True, download_name=os.path.basename(iwname))
 
 
 if __name__ == '__main__':
