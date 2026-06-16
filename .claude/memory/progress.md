@@ -5,6 +5,42 @@
 
 ---
 
+## 2026-06-16 — Refactoring in produzione (cutover) e separazione ambienti
+
+Commit di riferimento: 0516741 (merge di `refactoring` in `main`).
+Cutover dell'architettura: nginx serve la build statica da `/var/www/convertitore-ruolini`,
+Flask diventa solo-API su 127.0.0.1:5000, `proxy_read_timeout 600s` su `/save`. Eseguito
+`setup-nginx.sh` (riscritto per pubblicare la build in /var/www e installare il config dalla
+fonte unica `nginx.conf`) e riavviato il service. Verificato da client LAN reale (.73): output
+identico al noto-buono, zero celle diverse.
+Branch `refactoring` (commit 03b927d) portava: fix Odoo, URL API relativo same-origin
+(`ReportProvider.js` + `.env` vuoto), timeout nginx, cache della sessione XML-RPC in `xml_rpc.py`
+(conversione ~121s invece di ~295s, output invariato).
+Stabilita la separazione ambienti: worktree `develop` in `convertitore-ruolini-eni-dev` per lo
+sviluppo, `main` per la produzione, copia vergine `eni-report+intrapanelUI` come baseline.
+Documentazione: riscritte `deployment.md` e `dev-testing.md`; aggiornato `index.md`.
+Pulizia: rimosso il worktree `refactoring`, fermate le istanze di validazione (5060/5061/8080/8081).
+Pendente: STACK.md e design-and-security.md da sincronizzare alla nuova architettura.
+
+---
+
+## 2026-06-15/16 — Diagnosi e fix del bug Odoo (Track 3) e copia vergine locale (Track 2)
+
+Commit di riferimento: ae41e6b (fix), 466e90b (URL relativo) su `main`.
+Una conversione di prova falliva silenziosamente: `/save` 500 e `/download` restituiva un file
+vecchio omonimo. Causa, bug pre-esistente dal 12/06: in `odoo_handler/rpc/xml_rpc.py` due righe
+residue `self.url = url` / `self.db = db` sovrascrivevano con `None` l'URL letto dal `.env`,
+quindi ogni chiamata XML-RPC moriva con `unsupported XML-RPC protocol` e l'except lasciava
+`orders` non assegnato (UnboundLocalError). Rimosse le due righe; verificato uid Odoo 2622 e
+conversione end-to-end corretta su `main`. Reso poi relativo l'URL API del frontend per togliere
+il network error in locale. Diagnosi condotta in isolamento su istanze temporanee (Flask 5001,
+nginx 8080) senza toccare la produzione.
+Track 2: allestita la copia vergine `eni-report+intrapanelUI` (venv minimale flask/flask-cors/openpyxl,
+backend 5050, frontend CRA 3000), che NON ha il bug e punta a localhost; validata con conversione
+completa. Resta `gmandolesi@intrawelt.com` cablato nel suo sorgente, da sostituire (task #4).
+
+---
+
 ## 2026-06-15 — Proxmox optimization: verifica post-reboot
 
 Commit di riferimento: 0a25c2e (verifica di runtime, nessuna modifica di codice)
