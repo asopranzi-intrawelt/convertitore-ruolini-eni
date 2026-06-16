@@ -4,7 +4,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './components/Home';
 import Report from './components/Reports/Report';
-import Certificazioni from './components/Certificazioni/Certificazioni';
 import FattureSDI from './components/FattureSDI';
 
 function App() {
@@ -17,7 +16,6 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/report" element={<Report />} />
-          <Route path="/certificazioni" element={<Certificazioni />} />
           <Route path="/fatture-sdi" element={<FattureSDI />} />
           {/* Aggiungi altre rotte qui */}
         </Routes>

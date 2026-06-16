@@ -4,16 +4,13 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import ReportProvider from './Context/ReportProvider';
-import CertificazioniProvider from './Context/CertificazioniProvider';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <CertificazioniProvider>
-      <ReportProvider>
-        <App />
-      </ReportProvider>
-    </CertificazioniProvider>
+    <ReportProvider>
+      <App />
+    </ReportProvider>
   </React.StrictMode>
 );
 
