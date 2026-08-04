@@ -36,3 +36,4 @@ Thumbs.db
 
 # Docker (non usato in produzione diretta)
 # docker-compose.yml lasciato per riferimento futuro
+.claude/skills/studio-didattico/
