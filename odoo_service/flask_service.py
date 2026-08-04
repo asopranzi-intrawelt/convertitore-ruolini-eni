@@ -83,7 +83,9 @@ COL_ASSEVERAZIONE = 19   # ASSEVERAZIONE PRIMA COPIA
 COL_LEGALIZZAZIONE = 20  # LEGALIZZAZIONE (BOLLI): legalizzazione + apostille
 COL_BOLLO = 22           # importo imposta di bollo
 COL_NOTE_FORNITORE = 30  # nota "{qty} marche da bollo[ / tariffa maggiorata per urgenza]"
-COL_URGENZA = 29         # URGENZA: se valorizzata nel sorgente, la riga e' urgente
+COL_URGENZA = 23         # colonna flag '!': se valorizzata nel sorgente, la riga e' urgente.
+                         # NON la col29 (importo sovrapprezzo, sempre 0 nei dati reali): il
+                         # segnale operativo di urgenza e' un '!' messo a mano in questa colonna.
 
 # Nomi delle righe d'ordine Odoo, in italiano e inglese
 LINEE_TRADUZIONE = ('Traduzione', 'Translation')
