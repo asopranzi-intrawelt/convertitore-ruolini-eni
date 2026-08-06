@@ -63,8 +63,7 @@ Il frontend React aveva le URL delle API hardcodate su `localhost`:
 - `ReportProvider.js` → `http://localhost:5000`
 - `CertificazioniProvider.js` → `http://localhost:4000`
 
-Nei browser degli altri PC, `localhost` punta alla loro macchina locale, non al server.
-Risultato: tutte le chiamate API fallivano silenziosamente.
+Nei browser degli altri PC, `localhost` punta alla loro macchina locale, non al server. Risultato: tutte le chiamate API fallivano silenziosamente.
 
 ### Soluzione
 
@@ -79,9 +78,7 @@ Le URL vengono incorporate nella build in fase di compilazione (`npm run build`)
 - `ReportProvider.js:6` → `const domain = process.env.REACT_APP_REPORT_API || "http://localhost:5000";`
 - `CertificazioniProvider.js:6` → `const domain = process.env.REACT_APP_CERT_API || "http://localhost:4000";`
 
-**3. Flask serve anche la React SPA** (`flask_service.py`)
-Flask ora risponde a qualunque percorso sconosciuto restituendo `index.html` della build React,
-quindi non serve un server separato (Nginx, serve, ecc.).
+**3. Flask serve anche la React SPA** (`flask_service.py`) Flask ora risponde a qualunque percorso sconosciuto restituendo `index.html` della build React, quindi non serve un server separato (Nginx, serve, ecc.).
 
 **4. IP restriction in Flask** (`flask_service.py`)
 ```python
@@ -98,8 +95,7 @@ def restrict_access():
 cd IntraPanel/frontend
 npm run build
 ```
-La build è già presente in `IntraPanel/frontend/build/` e non va rieseguita
-salvo modifiche al codice frontend o al file `.env`.
+La build è già presente in `IntraPanel/frontend/build/` e non va rieseguita salvo modifiche al codice frontend o al file `.env`.
 
 ---
 

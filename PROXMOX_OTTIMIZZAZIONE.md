@@ -1,8 +1,6 @@
 # Ottimizzazione VM su Proxmox — IntraPanel
 
-Questa VM ospita esclusivamente il servizio IntraPanel (Flask + React). Al momento
-consuma ~5 GB di RAM su 8 disponibili a causa di servizi inutili. Obiettivo: ridurre
-il consumo di RAM e CPU liberando risorse sulla VM Proxmox.
+Questa VM ospita esclusivamente il servizio IntraPanel (Flask + React). Al momento consuma ~5 GB di RAM su 8 disponibili a causa di servizi inutili. Obiettivo: ridurre il consumo di RAM e CPU liberando risorse sulla VM Proxmox.
 
 ---
 
@@ -25,10 +23,7 @@ I seguenti servizi sono stati disabilitati con lo script `proxmox-opt.sh`:
 | `mariadb` | DB locale — app usa solo Odoo XML-RPC esterno |
 | `apache2` | Web server — rimpiazzato da nginx |
 
-**Nota:** il desktop GNOME è stato mantenuto (`gdm` + `graphical.target`) per permettere
-l'accesso diretto al SO dalla console Proxmox o dalla macchina fisica.
-`avahi-daemon` risulta ancora attivo nella sessione corrente (riattivato da D-Bus) ma non
-si avvierà al prossimo reboot.
+**Nota:** il desktop GNOME è stato mantenuto (`gdm` + `graphical.target`) per permettere l'accesso diretto al SO dalla console Proxmox o dalla macchina fisica. `avahi-daemon` risulta ancora attivo nella sessione corrente (riattivato da D-Bus) ma non si avvierà al prossimo reboot.
 
 ### Comandi manuali se necessario
 
@@ -110,8 +105,7 @@ sudo ufw status numbered
 
 ## 4. Ridurre RAM e CPU dal nodo Proxmox
 
-Trovare l'ID della VM nel pannello Proxmox (es. `101`), poi dal terminale
-del **nodo Proxmox** (non dalla VM):
+Trovare l'ID della VM nel pannello Proxmox (es. `101`), poi dal terminale del **nodo Proxmox** (non dalla VM):
 
 ```bash
 # Sostituire 101 con il VMID corretto
@@ -126,8 +120,7 @@ qm set 101 --memory 1024 --cores 1 --balloon 512
 
 Se si vuole essere più generosi: `--memory 2048 --cores 2`.
 
-> **Attenzione:** modificare la RAM a caldo potrebbe richiedere un riavvio della VM
-> perché venga applicata correttamente.
+> **Attenzione:** modificare la RAM a caldo potrebbe richiedere un riavvio della VM perché venga applicata correttamente.
 
 ---
 

@@ -1,108 +1,31 @@
 # Registro delle decisioni architetturali
 
-> Convenzione ADR-lite, append-only. Ogni decisione architetturale non ovvia entra come voce
-> numerata con data, stato, contesto, decisione, motivazione e conseguenze. Una decisione non si
-> cancella e non si riscrive: quando viene superata, si aggiunge una nuova voce che dichiara di
-> superare la precedente e ne cita il numero. Le inferenze non confermate si marcano come da
-> verificare e si promuovono a decisione solo quando una fonte le conferma.
+> Convenzione ADR-lite, append-only. Ogni decisione architetturale non ovvia entra come voce numerata con data, stato, contesto, decisione, motivazione e conseguenze. Una decisione non si cancella e non si riscrive: quando viene superata, si aggiunge una nuova voce che dichiara di superare la precedente e ne cita il numero. Le inferenze non confermate si marcano come da verificare e si promuovono a decisione solo quando una fonte le conferma.
 
 ## ADR-001 — Flask serve sia le API che la React SPA sulla stessa porta
 
-Data: 2026-06-12
-Stato: accettata
-Contesto: il frontend React aveva bisogno di un server statico separato (Nginx, serve,
-Node.js) e le URL delle API erano hardcodate su `localhost`, rendendo l'app inutilizzabile da
-altre macchine in LAN. Docker non era disponibile sulla VM.
-Decisione: Flask serve la build statica di React tramite una catch-all route, oltre alle API
-esistenti, tutto sulla porta 5000. `static_folder=None` disabilita la route `/static/`
-built-in di Flask che interferiva con i file della build React.
-Motivazione: zero dipendenze aggiuntive (niente Nginx, niente Node in produzione), deployment
-a un singolo processo, compatibile con il venv Python già presente.
-Conseguenze: ogni modifica al codice React richiede `npm run build` prima che le modifiche
-siano visibili; la porta 5000 è l'unico punto di ingresso per frontend e API.
+Data: 2026-06-12 Stato: accettata Contesto: il frontend React aveva bisogno di un server statico separato (Nginx, serve, Node.js) e le URL delle API erano hardcodate su `localhost`, rendendo l'app inutilizzabile da altre macchine in LAN. Docker non era disponibile sulla VM. Decisione: Flask serve la build statica di React tramite una catch-all route, oltre alle API esistenti, tutto sulla porta 5000. `static_folder=None` disabilita la route `/static/` built-in di Flask che interferiva con i file della build React. Motivazione: zero dipendenze aggiuntive (niente Nginx, niente Node in produzione), deployment a un singolo processo, compatibile con il venv Python già presente. Conseguenze: ogni modifica al codice React richiede `npm run build` prima che le modifiche siano visibili; la porta 5000 è l'unico punto di ingresso per frontend e API.
 
 ## ADR-002 — IP restriction a livello applicativo in Flask
 
-Data: 2026-06-12
-Stato: accettata
-Contesto: l'app deve essere accessibile solo ai tre IP statici della LAN Intrawelt
-(192.168.10.73, .74, .75). ufw era attivo ma non bloccava (non abilitato in modalità
-enforcing); nessun proxy inverso davanti a Flask.
-Decisione: `@app.before_request` confronta `request.remote_addr` con un set di IP ammessi e
-ritorna 403 per tutti gli altri. Le regole ufw per porta 5000 sono state aggiunte come
-secondo livello di difesa, anche se ufw non era in enforcing mode al momento.
-Motivazione: soluzione semplice, senza dipendenze infrastrutturali, funziona correttamente
-quando Flask riceve le connessioni dirette (senza proxy intermedi che maschererebbero l'IP).
-Conseguenze: se in futuro si aggiunge un proxy inverso (Nginx, Traefik), `request.remote_addr`
-restituirà l'IP del proxy; in quel caso la restriction andrà spostata al proxy o si dovrà
-leggere `X-Forwarded-For` con fiducia esplicita.
+Data: 2026-06-12 Stato: accettata Contesto: l'app deve essere accessibile solo ai tre IP statici della LAN Intrawelt (192.168.10.73, .74, .75). ufw era attivo ma non bloccava (non abilitato in modalità enforcing); nessun proxy inverso davanti a Flask. Decisione: `@app.before_request` confronta `request.remote_addr` con un set di IP ammessi e ritorna 403 per tutti gli altri. Le regole ufw per porta 5000 sono state aggiunte come secondo livello di difesa, anche se ufw non era in enforcing mode al momento. Motivazione: soluzione semplice, senza dipendenze infrastrutturali, funziona correttamente quando Flask riceve le connessioni dirette (senza proxy intermedi che maschererebbero l'IP). Conseguenze: se in futuro si aggiunge un proxy inverso (Nginx, Traefik), `request.remote_addr` restituirà l'IP del proxy; in quel caso la restriction andrà spostata al proxy o si dovrà leggere `X-Forwarded-For` con fiducia esplicita.
 
 ## ADR-003 — Credenziali Odoo in file .env non tracciato
 
-Data: 2026-06-12
-Stato: accettata
-Contesto: le credenziali Odoo (`asopranzi@intrawelt.com` / password) erano hardcodate in
-`odoo_handler/rpc/xml_rpc.py` e sarebbero finite nel repository git.
-Decisione: le credenziali sono spostate in `odoo_service/.env`, escluso da git, e lette
-tramite `python-dotenv` all'avvio. Il file `.env` va ricreato manualmente su ogni nuovo
-ambiente di deployment.
-Motivazione: nessun segreto nel repository; la rotazione della password non richiede un
-commit.
-Conseguenze: il deployment su una macchina nuova richiede la creazione manuale di
-`odoo_service/.env` con le variabili `ODOO_URL`, `ODOO_DB`, `ODOO_USERNAME`, `ODOO_PASSWORD`.
+Data: 2026-06-12 Stato: accettata Contesto: le credenziali Odoo (`asopranzi@intrawelt.com` / password) erano hardcodate in `odoo_handler/rpc/xml_rpc.py` e sarebbero finite nel repository git. Decisione: le credenziali sono spostate in `odoo_service/.env`, escluso da git, e lette tramite `python-dotenv` all'avvio. Il file `.env` va ricreato manualmente su ogni nuovo ambiente di deployment. Motivazione: nessun segreto nel repository; la rotazione della password non richiede un commit. Conseguenze: il deployment su una macchina nuova richiede la creazione manuale di `odoo_service/.env` con le variabili `ODOO_URL`, `ODOO_DB`, `ODOO_USERNAME`, `ODOO_PASSWORD`.
 
 ## ADR-004 — Adozione del sistema di progetto portabile
 
-Data: 2026-06-12
-Stato: accettata
-Contesto: il progetto necessita di uno stato interamente recuperabile da un clone e di
-documentazione che resti allineata al codice senza rilettura integrale a ogni sessione.
-Decisione: adottare il sistema descritto in `.claude/PROJECT-SYSTEM.md`, con motore di
-riconciliazione ancorato ai commit e doppio livello documentale tracciato/ignorato.
-Motivazione: persistenza strutturale su disco indipendente dalla sessione di chat, e controllo
-umano sul versionamento.
-Conseguenze: ogni passo significativo aggiorna schede, `last-verified-commit`, snapshot e
-work-log; commit e push restano manuali.
+Data: 2026-06-12 Stato: accettata Contesto: il progetto necessita di uno stato interamente recuperabile da un clone e di documentazione che resti allineata al codice senza rilettura integrale a ogni sessione. Decisione: adottare il sistema descritto in `.claude/PROJECT-SYSTEM.md`, con motore di riconciliazione ancorato ai commit e doppio livello documentale tracciato/ignorato. Motivazione: persistenza strutturale su disco indipendente dalla sessione di chat, e controllo umano sul versionamento. Conseguenze: ogni passo significativo aggiorna schede, `last-verified-commit`, snapshot e work-log; commit e push restano manuali.
 
 ## ADR-005 — La conversione riempie in posizione il foglio Fattura e produce direttamente il file _IW
 
-Data: 2026-06-16
-Stato: accettata, implementata sul branch `develop`, in attesa di deploy in produzione.
+Data: 2026-06-16 Stato: accettata, implementata sul branch `develop`, in attesa di deploy in produzione.
 
-Contesto, in termini operativi. Fino ad ora chi preparava il riepilogo mensile Eni partiva
-dall'export che la vecchia logica produceva, quello che veniva scaricato come "(1)". Quell'export
-aggiungeva al file un foglio chiamato `Control`: non era il file da consegnare, ma una seconda
-copia dei dati ridisegnata in un layout diverso, con alcune colonne "Check" e celle colorate di
-rosso dove un confronto non tornava. Da quel materiale la persona costruiva poi a mano il file
-finale `_IW`, riportando nel foglio del ruolino i valori presi da Odoo, cioè numero di pagine,
-asseverazione, legalizzazione, bollo e numero di marche, e aggiungendo le note del caso. Avere
-cinque mesi reali di coppie, il file sorgente e il corrispondente `_IW` corretto, ha permesso di
-dedurre con esattezza quale trasformazione la conversione deve compiere.
+Contesto, in termini operativi. Fino ad ora chi preparava il riepilogo mensile Eni partiva dall'export che la vecchia logica produceva, quello che veniva scaricato come "(1)". Quell'export aggiungeva al file un foglio chiamato `Control`: non era il file da consegnare, ma una seconda copia dei dati ridisegnata in un layout diverso, con alcune colonne "Check" e celle colorate di rosso dove un confronto non tornava. Da quel materiale la persona costruiva poi a mano il file finale `_IW`, riportando nel foglio del ruolino i valori presi da Odoo, cioè numero di pagine, asseverazione, legalizzazione, bollo e numero di marche, e aggiungendo le note del caso. Avere cinque mesi reali di coppie, il file sorgente e il corrispondente `_IW` corretto, ha permesso di dedurre con esattezza quale trasformazione la conversione deve compiere.
 
-Decisione. La conversione ora scrive direttamente, dentro il foglio `Fattura` del file di
-partenza, i valori letti da Odoo, in cinque colonne precise: numero pagine (colonna 16),
-asseverazione prima copia (colonna 19), legalizzazione e bolli (colonna 20, somma di
-legalizzazione e apostille), importo del bollo (colonna 22) e note fornitore (colonna 30, nella
-forma "quantità marche"). Formule e struttura del file restano intatte. Il foglio `Control` non
-viene più creato. Al suo posto la conversione aggiunge un foglio separato chiamato `Controllo IW`,
-che elenca riga per riga ogni valore che è stato modificato, con protocollo, colonna, valore prima
-e valore dopo, come supporto alla revisione manuale. Il file viene infine salvato e scaricato già
-col nome `<nome del sorgente>_IW.xlsx`.
+Decisione. La conversione ora scrive direttamente, dentro il foglio `Fattura` del file di partenza, i valori letti da Odoo, in cinque colonne precise: numero pagine (colonna 16), asseverazione prima copia (colonna 19), legalizzazione e bolli (colonna 20, somma di legalizzazione e apostille), importo del bollo (colonna 22) e note fornitore (colonna 30, nella forma "quantità marche"). Formule e struttura del file restano intatte. Il foglio `Control` non viene più creato. Al suo posto la conversione aggiunge un foglio separato chiamato `Controllo IW`, che elenca riga per riga ogni valore che è stato modificato, con protocollo, colonna, valore prima e valore dopo, come supporto alla revisione manuale. Il file viene infine salvato e scaricato già col nome `<nome del sorgente>_IW.xlsx`.
 
-Motivazione. L'output è ora direttamente il file `_IW` da consegnare, prodotto in automatico, e
-non più un export intermedio da rilavorare a mano. Il foglio `Controllo IW` rende verificabile a
-colpo d'occhio cosa l'automazione ha scritto. Spariscono sia il foglio `Control` fuorviante sia i
-fogli `Control` vuoti che si accumulavano riconvertendo un file già lavorato.
+Motivazione. L'output è ora direttamente il file `_IW` da consegnare, prodotto in automatico, e non più un export intermedio da rilavorare a mano. Il foglio `Controllo IW` rende verificabile a colpo d'occhio cosa l'automazione ha scritto. Spariscono sia il foglio `Control` fuorviante sia i fogli `Control` vuoti che si accumulavano riconvertendo un file già lavorato.
 
-Conseguenze, in termini operativi. Chi fa la conversione carica il file sorgente del mese e
-scarica direttamente il `_IW`, già pronto e già col nome giusto, senza ricostruirlo a mano. Resta
-da fare un solo passaggio manuale, di controllo: aprire il foglio `Controllo IW` per verificare i
-valori iniettati, e aggiungere a mano le sole note di giudizio che l'applicazione non può ricavare
-dai dati. Sono due. La nota di urgenza "/ tariffa maggiorata per urgenza", da mettere nella
-colonna note fornitore quando l'ordine ha avuto la maggiorazione per urgenza. E l'eventuale nota
-libera nella colonna note cliente, come "Si allega ruolino con la richiesta di certificazione".
-Queste due note non sono presenti nei dati Odoo né nel file sorgente, quindi restano un giudizio
-di chi rivede. La logica è stata validata contro i cinque mesi di benchmark da gennaio a maggio
-2026: le cinque colonne automatiche coincidono con il `_IW` atteso su circa 587 righe, con le sole
-eccezioni di quelle note manuali e di due righe in cui il dato su Odoo è stato modificato dopo la
-generazione del benchmark.
+Conseguenze, in termini operativi. Chi fa la conversione carica il file sorgente del mese e scarica direttamente il `_IW`, già pronto e già col nome giusto, senza ricostruirlo a mano. Resta da fare un solo passaggio manuale, di controllo: aprire il foglio `Controllo IW` per verificare i valori iniettati, e aggiungere a mano le sole note di giudizio che l'applicazione non può ricavare dai dati. Sono due. La nota di urgenza "/ tariffa maggiorata per urgenza", da mettere nella colonna note fornitore quando l'ordine ha avuto la maggiorazione per urgenza. E l'eventuale nota libera nella colonna note cliente, come "Si allega ruolino con la richiesta di certificazione". Queste due note non sono presenti nei dati Odoo né nel file sorgente, quindi restano un giudizio di chi rivede. La logica è stata validata contro i cinque mesi di benchmark da gennaio a maggio 2026: le cinque colonne automatiche coincidono con il `_IW` atteso su circa 587 righe, con le sole eccezioni di quelle note manuali e di due righe in cui il dato su Odoo è stato modificato dopo la generazione del benchmark.
