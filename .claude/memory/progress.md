@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-10-05 — Disco paravirtualizzato, watchdog collaudato, script spostati in network-design
+
+Commit di riferimento: questo commit. File rimossi: `ops/vm-health/`, perché per decisione dell'IT Manager gli script di utilità vivono in `D:/network-design` (`scripts/vm-health/`) e i progetti li richiamano. File modificati: `.claude/context/deployment.md` (sezione Salute della VM, con la configurazione propria della 204 e quella su Proxmox), `.claude/memory/index.md`, questo work-log. Sul nodo: snapshot `pre-disco-20261005`, poi `scsihw: virtio-scsi-single` e disco con `iothread=1,discard=on` senza `cache=writethrough`; verificato prima che `virtio_scsi` fosse compilato nel kernel e la radice montata per UUID. Dopo il riavvio il kernel vede `Virtio SCSI HBA` e il disco offre discard. Collaudo del watchdog con `echo c > /proc/sysrq-trigger`, con `kernel.panic = 0` e senza kdump: ultimo evento alle 14:35:41, nuovo avvio alle 14:36:29. I file già installati sulla VM non cambiano.
+
+---
+
 ## 2026-10-05 — Console lentissima: CPU senza AVX, passata a `cpu: host` e 4 core
 
 Commit di riferimento: questo commit. File modificati: `PROXMOX_OTTIMIZZAZIONE.md` (nota al punto 4), questo work-log. Sintomo: dopo i riavvii di oggi la console Proxmox della VM era quasi inutilizzabile, con clic che non arrivavano e finestre lentissime, mentre i servizi rispondevano in LAN. Misure dentro la VM: CPU a riposo al 96-100%, RAM e disco normali; lo stesso driver `virtio_gpu` con il kernel 7.0 di oggi e con il 6.17 di prima, quindi il kernel è escluso. Passare da 2 a 4 core non ha cambiato nulla, e la prima diagnosi in quel senso era sbagliata. Il confronto `diff <(qm config 204) <(qm config 207)` sul nodo ha isolato la causa: la 204 aveva `cpu: x86-64-v2-AES`, che nasconde all'ospite AVX, AVX2 e FMA, verificato su `/proc/cpuinfo`, mentre la 207 ha `cpu: host`. Senza accelerazione 3D GNOME si disegna in software con Mesa llvmpipe, che senza quelle istruzioni è molto più lento. Rimedio: `qm set 204 --cpu host`, poi spegnimento e riaccensione; dopo il riavvio l'ospite vede Xeon Gold 6126 con AVX2, e watchdog, servizi e timer sono attivi. La VM resta a 4 core. Differenze ancora aperte rispetto alla 207, non legate alla console: la 204 non specifica `scsihw`, quindi usa il controller emulato predefinito, e ha `cache=writethrough` senza `iothread`; peserebbero sulle scritture e sui backup notturni (#207 in `D:\network-design`), e vanno cambiate a parte perché toccano il disco di sistema.
