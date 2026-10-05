@@ -105,6 +105,8 @@ sudo ufw status numbered
 
 ## 4. Ridurre RAM e CPU dal nodo Proxmox
 
+> **Superato il 05/10/2026.** La VM ha ora `memory: 4096` e `balloon: 4096`, cioè 4 GB fissi. Con 2 GB e il desktop GNOME la macchina lavorava con 1,7 GB di swap prima del blocco del 12/09, e un `balloon` più basso di `memory`, come quello suggerito qui sotto, permette a Proxmox di togliere memoria all'ospite quando il nodo supera l'80% di RAM usata: il 05/10, con `balloon: 1024`, la VM partita con 4 GB ne vedeva 1,4. Non riapplicare i valori di questa sezione senza rileggere il work-log del 05/10.
+
 Trovare l'ID della VM nel pannello Proxmox (es. `101`), poi dal terminale del **nodo Proxmox** (non dalla VM):
 
 ```bash

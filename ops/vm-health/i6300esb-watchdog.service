@@ -1,0 +1,14 @@
+[Unit]
+Description=Carica il driver del watchdog virtuale i6300esb, in blacklist su Ubuntu
+# I file blacklist_linux-*.conf del kernel escludono i driver watchdog
+# dal caricamento automatico; modprobe per nome li carica comunque.
+DefaultDependencies=no
+Before=sysinit.target
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/modprobe i6300esb
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target
