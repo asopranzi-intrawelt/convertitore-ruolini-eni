@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-10-05 — Console lentissima: CPU senza AVX, passata a `cpu: host` e 4 core
+
+Commit di riferimento: questo commit. File modificati: `PROXMOX_OTTIMIZZAZIONE.md` (nota al punto 4), questo work-log. Sintomo: dopo i riavvii di oggi la console Proxmox della VM era quasi inutilizzabile, con clic che non arrivavano e finestre lentissime, mentre i servizi rispondevano in LAN. Misure dentro la VM: CPU a riposo al 96-100%, RAM e disco normali; lo stesso driver `virtio_gpu` con il kernel 7.0 di oggi e con il 6.17 di prima, quindi il kernel è escluso. Passare da 2 a 4 core non ha cambiato nulla, e la prima diagnosi in quel senso era sbagliata. Il confronto `diff <(qm config 204) <(qm config 207)` sul nodo ha isolato la causa: la 204 aveva `cpu: x86-64-v2-AES`, che nasconde all'ospite AVX, AVX2 e FMA, verificato su `/proc/cpuinfo`, mentre la 207 ha `cpu: host`. Senza accelerazione 3D GNOME si disegna in software con Mesa llvmpipe, che senza quelle istruzioni è molto più lento. Rimedio: `qm set 204 --cpu host`, poi spegnimento e riaccensione; dopo il riavvio l'ospite vede Xeon Gold 6126 con AVX2, e watchdog, servizi e timer sono attivi. La VM resta a 4 core. Differenze ancora aperte rispetto alla 207, non legate alla console: la 204 non specifica `scsihw`, quindi usa il controller emulato predefinito, e ha `cache=writethrough` senza `iothread`; peserebbero sulle scritture e sui backup notturni (#207 in `D:\network-design`), e vanno cambiate a parte perché toccano il disco di sistema.
+
+---
+
 ## 2026-10-05 — Presidi contro un nuovo blocco: atop, controllo ogni 5 minuti, watchdog, 4 GB fissi
 
 Commit di riferimento: questo commit. File creati: `ops/vm-health/` (`vm-health-check.py`, timer e servizio systemd, `vm-health.conf`, `60-watchdog.conf`, `i6300esb-watchdog.service`, `install.sh`, `README.md`). File modificati: `.claude/context/deployment.md` (sezione Salute della VM; corretta la frase sul 403 da localhost, che dal commit `253b2f3` risponde 200), `PROXMOX_OTTIMIZZAZIONE.md` (punto 4 dichiarato superato), `.claude/memory/index.md`. Motivo: il blocco del 12/09 è durato 23 giorni perché nessun controllo se n'è accorto e niente ha riavviato la VM.
