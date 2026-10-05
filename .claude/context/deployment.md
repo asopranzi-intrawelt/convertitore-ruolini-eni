@@ -10,7 +10,6 @@ covers-paths:
   - odoo_service/.venv311/**
   - IntraPanel/frontend/build/**
   - PROXMOX_OTTIMIZZAZIONE.md
-  - ops/vm-health/**
 last-verified-commit: 0516741
 ---
 
@@ -88,7 +87,9 @@ Da localhost nginx risponde 200 su entrambe le porte, perché dal commit `253b2f
 
 ## Salute della VM
 
-Dopo il blocco del sistema ospite dal 12/09 al 05/10/2026 la VM ha tre presidi, installati da `ops/vm-health/install.sh` e descritti in `ops/vm-health/README.md`: `atop` per la cronologia dei processi, il timer `vm-health-check` ogni 5 minuti con allarmi nel journal, e la configurazione del watchdog di systemd, che diventa operativa quando sul nodo si aggiunge il dispositivo con `qm set 204 --watchdog model=i6300esb,action=reset` e si spegne e riaccende la VM.
+Dopo il blocco del sistema ospite dal 12/09 al 05/10/2026 la VM ha tre presidi: `atop` per la cronologia dei processi, il timer `vm-health-check` ogni 5 minuti con allarmi nel journal, e il watchdog (dispositivo `i6300esb` sul nodo, `RuntimeWatchdogSec=30s` nell'ospite), collaudato con un crash simulato. Gli script non vivono in questo repository: la fonte unica degli strumenti per le VM è `D:/network-design`, in `scripts/vm-health/` con il README della catena degli allarmi, e da lì si reinstallano con `scripts/Install-VmHealth.ps1 -Target odoo-vm`. Questa VM è stata il pilota (micro-step M29 di quel progetto). La configurazione propria della 204, in `/etc/vm-health/vm-health.conf`, sorveglia `nginx.service`, il servizio utente `intrawelt:intrapanel.service` e `http://127.0.0.1/`, con le soglie predefinite; va ricompilata così se la VM venisse reinstallata. Dalla postazione dell'IT Manager la VM è sorvegliata anche da fuori, con notifiche di Windows sui soli cambi di stato (`scripts/Watch-VmHealth.ps1` di `network-design`).
+
+Configurazione della VM su Proxmox al 05/10/2026, da non riportare indietro senza rileggere il work-log: `cores: 4`, `cpu: host`, `memory` e `balloon` a 4096, `scsihw: virtio-scsi-single`, disco con `iothread=1,discard=on` e senza `cache=writethrough`, `watchdog: model=i6300esb,action=reset`.
 
 ```bash
 journalctl -t vm-health --since today   # allarmi e rientri
