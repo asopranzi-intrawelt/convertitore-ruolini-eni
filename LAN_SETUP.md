@@ -146,3 +146,4 @@ curl -s -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:5000/
 | HTTP 403 dal browser | IP non in allow list | Verificare IP del client |
 | Pagina bianca nel browser | Build React non aggiornata | `npm run build` in `IntraPanel/frontend` |
 | Errore API `/upload` | Odoo non raggiungibile | Verificare VPN/connessione a `trex.intrawelt.com` |
+| Nessuna risposta, nemmeno al ping; dal client "host di destinazione non raggiungibile" | Sistema ospite della VM 204 bloccato, anche se Proxmox la dà `running` (caso del 12/09-05/10/2026) | Sul nodo: `qm agent 204 ping`; se l'agent non risponde e la console dice "Display output is not active", `qm reset 204` |
