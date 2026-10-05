@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-10-05 — Presidi contro un nuovo blocco: atop, controllo ogni 5 minuti, watchdog, 4 GB fissi
+
+Commit di riferimento: questo commit. File creati: `ops/vm-health/` (`vm-health-check.py`, timer e servizio systemd, `vm-health.conf`, `60-watchdog.conf`, `i6300esb-watchdog.service`, `install.sh`, `README.md`). File modificati: `.claude/context/deployment.md` (sezione Salute della VM; corretta la frase sul 403 da localhost, che dal commit `253b2f3` risponde 200), `PROXMOX_OTTIMIZZAZIONE.md` (punto 4 dichiarato superato), `.claude/memory/index.md`. Motivo: il blocco del 12/09 è durato 23 giorni perché nessun controllo se n'è accorto e niente ha riavviato la VM.
+
+Eseguito dall'utente con `sudo bash ops/vm-health/install.sh` e sulla shell del nodo. Dentro la VM: `atop` attivo con registro giornaliero in `/var/log/atop/`; `vm-health-check.timer` ogni 5 minuti, primo giro con esito 0 e nessun allarme; `RuntimeWatchdogSec=30s` caricato da systemd. Sul nodo: `qm set 204 --watchdog model=i6300esb,action=reset --memory 4096`, poi `qm shutdown 204 && qm start 204`. Dopo il riavvio la scheda `6300ESB Watchdog Timer` compariva in `lspci` ma `/dev/watchdog` mancava: i file `blacklist_linux-*.conf` del kernel Ubuntu escludono `i6300esb` e `systemd-modules-load` rispetta la blacklist, quindi è stato aggiunto `i6300esb-watchdog.service`, che carica il modulo per nome all'avvio; `wdctl` mostra ora `i6300ESB timer`, timeout 30 s, con keepalive attivo. Seconda sorpresa: la VM avviata con 4 GB ne vedeva 1,4, perché la configurazione aveva `balloon: 1024` e il nodo è vicino all'80% di RAM usata, soglia oltre la quale Proxmox riprende memoria agli ospiti; con `qm set 204 --balloon 4096` il balloon si è sgonfiato a caldo. Servizio verificato dalla LAN con `200` su porta 80 e 8090.
+
+Non fatto qui e registrato in `D:\network-design` (#205-#207 e `docs/log-collector-integrazione.md`), dove l'IT Manager ha deciso che il presidio vale per tutte le VM ed è affidato a `D:\log-collector`: relay SMTP, senza il quale `NOTIFY_CMD` resta vuoto e gli allarmi restano nel journal; la VM come sorgente del collettore con heartbeat; *fleecing* sui lavori di backup. Il watchdog non è stato provato con un blocco simulato, quindi resta da collaudare in una finestra concordata.
+
+---
+
 ## 2026-10-05 — Servizio irraggiungibile in LAN: VM 204 bloccata dal 12/09, ripristinata con reset
 
 Commit di riferimento: nessuna modifica di codice né di configurazione; aggiornati solo questo work-log, `LAN_SETUP.md` (riga di troubleshooting) e `index.md` (aperti). Sintomo: `http://convertitore-ruolini/` e `:8090` non rispondevano dalla LAN. Diagnosi dalla postazione .73: la rete è piatta (/19, on-link), le VM vicine .21, .24, .25 e il gateway rispondevano, la .22 non rispondeva nemmeno all'ARP, quindi né firewall né `allow` di nginx erano in causa. Sul nodo Proxmox `qm status 204` dava `running` con uptime di circa 112 giorni, ma il guest agent non rispondeva, la console mostrava "Display output is not active" e l'API riportava `cpu: 0` con 1,7 GB di RAM su 2: sistema ospite in stallo con il processo QEMU vivo. Ripristino con `qm reset 204` alle 11:57; dopo il boot nginx è attivo, la LAN riceve `200` su porta 80 e 8090, Flask su 127.0.0.1:5010 e qemu-guest-agent attivi, CPU a riposo al 99,7% idle.

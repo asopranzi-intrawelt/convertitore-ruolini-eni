@@ -1,0 +1,8 @@
+[Unit]
+Description=Controllo di salute della VM (CPU, memoria, OOM, servizi)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/vm-health-check
+Nice=10

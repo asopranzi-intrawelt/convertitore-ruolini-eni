@@ -10,6 +10,7 @@ covers-paths:
   - odoo_service/.venv311/**
   - IntraPanel/frontend/build/**
   - PROXMOX_OTTIMIZZAZIONE.md
+  - ops/vm-health/**
 last-verified-commit: 0516741
 ---
 
@@ -83,7 +84,19 @@ Verifica rapida che i due servizi siano in ascolto, la porta 80 di nginx e la 50
 ss -tlnp | grep -E ':80|:5000'
 ```
 
-Da localhost nginx risponde 403 per via della IP restriction: è il comportamento atteso, non un errore. La verifica funzionale reale va fatta dal browser di un client autorizzato.
+Da localhost nginx risponde 200 su entrambe le porte, perché dal commit `253b2f3` produzione e staging ammettono anche `127.0.0.1` (verificato il 05/10/2026); gli altri indirizzi fuori dalla lista ricevono 403. La verifica funzionale reale va comunque fatta dal browser di un client autorizzato.
+
+## Salute della VM
+
+Dopo il blocco del sistema ospite dal 12/09 al 05/10/2026 la VM ha tre presidi, installati da `ops/vm-health/install.sh` e descritti in `ops/vm-health/README.md`: `atop` per la cronologia dei processi, il timer `vm-health-check` ogni 5 minuti con allarmi nel journal, e la configurazione del watchdog di systemd, che diventa operativa quando sul nodo si aggiunge il dispositivo con `qm set 204 --watchdog model=i6300esb,action=reset` e si spegne e riaccende la VM.
+
+```bash
+journalctl -t vm-health --since today   # allarmi e rientri
+systemctl list-timers vm-health-check.timer
+systemctl show -p RuntimeWatchdogUSec   # 30s se la configurazione del watchdog e' caricata
+```
+
+Se la VM non risponde nemmeno al ping mentre Proxmox la dà `running`, la procedura è in `LAN_SETUP.md`, sezione Troubleshooting.
 
 ## Virtual environment
 
