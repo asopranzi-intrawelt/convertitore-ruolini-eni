@@ -5,7 +5,7 @@ generated-date: 2026-06-12
 covers-paths:
   - odoo_service/flask_service.py
   - odoo_service/odoo_handler/**
-last-verified-commit: 0a25c2e
+last-verified-commit: fdd9b87
 ---
 
 # Design e sicurezza

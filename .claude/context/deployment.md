@@ -1,5 +1,5 @@
 ---
-generated-from-commit: 0516741
+generated-from-commit: 451ac8b
 generated-from-branch: main
 generated-date: 2026-06-16
 covers-paths:
@@ -10,7 +10,7 @@ covers-paths:
   - odoo_service/.venv311/**
   - IntraPanel/frontend/build/**
   - PROXMOX_OTTIMIZZAZIONE.md
-last-verified-commit: 0516741
+last-verified-commit: 451ac8b
 ---
 
 # Deployment
@@ -19,7 +19,7 @@ last-verified-commit: 0516741
 
 L'applicazione è in produzione su una singola VM Proxmox raggiungibile a `192.168.20.22`, accessibile via browser su `http://convertitore-ruolini` (porta 80). I client devono avere la voce `192.168.20.22 convertitore-ruolini` nel proprio file hosts.
 
-A partire dal commit `0516741` la responsabilità è separata fra nginx e Flask, e non più concentrata su Flask come in origine. nginx, sulla porta 80, fa due cose. Serve direttamente dal disco la build statica della SPA[^1] React, che vive in `/var/www/convertitore-ruolini` ed è di proprietà di `www-data`, l'utente con cui gira il worker nginx. E applica la *IP restriction*: ammette i soli `192.168.10.73`, `192.168.10.74`, `192.168.10.75`, e risponde 403 a qualunque altro indirizzo, valutando l'IP TCP reale della connessione e non header inoltrati. Solo le rotte applicative `/get-login`, `/trex/*`, `/upload`, `/save`, `/download/*` vengono inoltrate in *proxy* al backend Flask su `127.0.0.1:5000`, che non è più esposto direttamente in LAN e non serve più alcuna interfaccia: alla radice `/` risponde 404 perché è puro backend API. Tutto il resto cade sul ramo statico con fallback su `index.html`, secondo lo schema delle *single page application*.
+A partire dal commit `451ac8b` la responsabilità è separata fra nginx e Flask, e non più concentrata su Flask come in origine. nginx, sulla porta 80, fa due cose. Serve direttamente dal disco la build statica della SPA[^1] React, che vive in `/var/www/convertitore-ruolini` ed è di proprietà di `www-data`, l'utente con cui gira il worker nginx. E applica la *IP restriction*: ammette i soli `192.168.10.73`, `192.168.10.74`, `192.168.10.75`, e risponde 403 a qualunque altro indirizzo, valutando l'IP TCP reale della connessione e non header inoltrati. Solo le rotte applicative `/get-login`, `/trex/*`, `/upload`, `/save`, `/download/*` vengono inoltrate in *proxy* al backend Flask su `127.0.0.1:5000`, che non è più esposto direttamente in LAN e non serve più alcuna interfaccia: alla radice `/` risponde 404 perché è puro backend API. Tutto il resto cade sul ramo statico con fallback su `index.html`, secondo lo schema delle *single page application*.
 
 Due dettagli della configurazione nginx meritano attenzione. Sulla location delle API è impostato `proxy_read_timeout 600s`, perché la rotta `/save` arricchisce il foglio interrogando Odoo riga per riga e una conversione può durare alcuni minuti: il default di 60 secondi produrrebbe un 504 a metà elaborazione. La build servita usa URL relativi, cioè le chiamate API partono verso la stessa origine da cui è servita la pagina, così una sola build vale tanto in locale quanto in LAN senza dover ricompilare per ambiente.
 
@@ -83,7 +83,7 @@ Verifica rapida che i due servizi siano in ascolto, la porta 80 di nginx e la 50
 ss -tlnp | grep -E ':80|:5000'
 ```
 
-Da localhost nginx risponde 200 su entrambe le porte, perché dal commit `253b2f3` produzione e staging ammettono anche `127.0.0.1` (verificato il 05/10/2026); gli altri indirizzi fuori dalla lista ricevono 403. La verifica funzionale reale va comunque fatta dal browser di un client autorizzato.
+Da localhost nginx risponde 200 su entrambe le porte, perché dal commit `32bb81f` produzione e staging ammettono anche `127.0.0.1` (verificato il 05/10/2026); gli altri indirizzi fuori dalla lista ricevono 403. La verifica funzionale reale va comunque fatta dal browser di un client autorizzato.
 
 ## Salute della VM
 

@@ -1,5 +1,5 @@
 ---
-generated-from-commit: 0516741
+generated-from-commit: 451ac8b
 generated-from-branch: main
 generated-date: 2026-06-16
 covers-paths:
@@ -9,12 +9,12 @@ covers-paths:
   - nginx.conf
   - setup-nginx.sh
   - .claude/**
-last-verified-commit: 0516741
+last-verified-commit: 451ac8b
 ---
 
 # Feature attiva
 
-Stato: refactoring per la LAN completato e in produzione (cutover al commit `0516741`, verificato da un client LAN reale). L'attività aperta in coda è uniformare l'utente Odoo (task #4).
+Stato: refactoring per la LAN completato e in produzione (cutover al commit `451ac8b`, verificato da un client LAN reale). L'attività aperta in coda è uniformare l'utente Odoo (task #4).
 
 ## Refactoring architettura (Fase 2 roadmap) — completato e deployato
 

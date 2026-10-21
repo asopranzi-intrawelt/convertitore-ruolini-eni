@@ -1,5 +1,5 @@
 ---
-generated-from-commit: 0516741
+generated-from-commit: 451ac8b
 generated-from-branch: main
 generated-date: 2026-06-16
 covers-paths:
@@ -7,7 +7,7 @@ covers-paths:
   - IntraPanel/frontend/src/**
   - odoo_service/flask_service.py
   - nginx.conf
-last-verified-commit: 0516741
+last-verified-commit: 451ac8b
 ---
 
 # Sviluppo e test

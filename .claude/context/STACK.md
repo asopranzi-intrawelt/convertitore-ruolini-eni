@@ -6,7 +6,7 @@ covers-paths:
   - odoo_service/**
   - IntraPanel/frontend/src/**
   - IntraPanel/backend/**
-last-verified-commit: 0a25c2e
+last-verified-commit: fdd9b87
 ---
 
 # Stack applicativo
