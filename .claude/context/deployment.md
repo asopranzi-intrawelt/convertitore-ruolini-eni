@@ -9,7 +9,7 @@ covers-paths:
   - IntraPanel/frontend/build/**
   - LAN_SETUP.md
   - PROXMOX_OTTIMIZZAZIONE.md
-last-verified-commit: 0a25c2e
+last-verified-commit: fdd9b87
 ---
 
 # Deployment

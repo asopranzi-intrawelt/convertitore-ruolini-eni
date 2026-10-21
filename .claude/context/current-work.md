@@ -1,12 +1,12 @@
 ---
-generated-from-commit: 0a25c2e
+generated-from-commit: fdd9b87
 generated-from-branch: main
 generated-date: 2026-06-15
 covers-paths:
   - odoo_service/flask_service.py
   - IntraPanel/frontend/**
   - .claude/**
-last-verified-commit: 0a25c2e
+last-verified-commit: fdd9b87
 ---
 
 # Feature attiva

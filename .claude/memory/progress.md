@@ -7,7 +7,7 @@
 
 ## 2026-06-15 — Proxmox optimization: verifica post-reboot
 
-Commit di riferimento: 0a25c2e (verifica di runtime, nessuna modifica di codice)
+Commit di riferimento: fdd9b87 (verifica di runtime, nessuna modifica di codice)
 Riduzione risorse applicata dalla console Proxmox: RAM a 2 GB, CPU a 2 vCPU. Reboot di verifica
 eseguito. Dopo il riavvio risultano up sia nginx (active, listen 0.0.0.0:80, syntax OK) sia il
 systemd user service `intrapanel` (active, 127.0.0.1:5000, HTTP 200, linger attivo). nginx
@@ -21,7 +21,7 @@ l'uso di swap; chiude così la pendenza "riduzione RAM/CPU" della voce precedent
 
 ## 2026-06-15 — Proxmox optimization
 
-Commit di riferimento: 0a25c2e (modifiche solo su file di configurazione sistema, non in repo)
+Commit di riferimento: fdd9b87 (modifiche solo su file di configurazione sistema, non in repo)
 Servizi disabilitati: cups, cups-browsed, avahi-daemon, ModemManager, bluetooth,
 gnome-remote-desktop, kerneloops, power-profiles-daemon, switcheroo-control, mariadb.
 Desktop GNOME mantenuto su richiesta esplicita (gdm + graphical.target invariati).
@@ -32,7 +32,7 @@ Pendente: riduzione RAM/CPU dalla console Proxmox (operazione manuale dell'utent
 
 ## 2026-06-15 — Hostname LAN e nginx
 
-Commit di riferimento: 0a25c2e
+Commit di riferimento: fdd9b87
 File modificati: `odoo_service/flask_service.py` (rimossa IP restriction, binding su 127.0.0.1),
 `IntraPanel/frontend/.env` (URL aggiornato a http://convertitore-ruolini),
 `.claude/settings.json` (PROJECT_NAME corretto), `CLAUDE.md` (nome progetto corretto).
